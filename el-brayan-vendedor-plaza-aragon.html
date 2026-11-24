@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EL BRAYAN - Plaza Aragón</title>
+<style>
+body{font-family:Arial,sans-serif;background:#111;color:#fff;margin:0;padding:0}
+.header{background:#ffcc00;color:#000;padding:15px;text-align:center}
+.header h1{margin:0;font-size:24px}
+.header p{margin:5px 0 0}
+.productos{display:flex;gap:10px;padding:15px;justify-content:center}
+.card{background:#222;border:1px solid #444;border-radius:12px;padding:15px;width:45%;text-align:center}
+.card h3{color:#ffcc00}
+.card button{background:#ffcc00;border:none;padding:10px 15px;border-radius:8px;font-weight:bold;cursor:pointer;width:100%}
+#chat{background:#000;margin:10px;border-radius:12px;padding:10px;height:380px;overflow-y:auto;display:flex;flex-direction:column}
+.msg{padding:8px 10px;margin:6px 0;border-radius:10px;max-width:85%}
+.brayan{background:#222;align-self:flex-start}
+.user{background:#ffcc00;color:#000;margin-left:auto;text-align:right}
+.controls{display:flex;gap:8px;padding:10px;align-items:center}
+.controls input{flex:1;padding:12px;border-radius:20px;border:none;min-width:0}
+.controls button{padding:12px 16px;border-radius:50%;border:none;cursor:pointer;font-size:18px}
+#micBtn{background:#ff0000;color:#fff}
+#hablarBtn{background:#25D366}
+#chips{display:flex;gap:8px;padding:2px 10px 6px;flex-wrap:wrap}
+#chips:empty{padding:0}
+.chip{background:#222;color:#ffcc00;border:1.5px solid #ffcc00;padding:10px 18px;border-radius:20px;font-weight:bold;cursor:pointer;font-size:15px}
+.wa-cta{align-self:stretch;margin:6px 0}
+.wa-cta a{display:block;background:#25D366;color:#fff;text-align:center;padding:13px 12px;border-radius:10px;font-weight:bold;text-decoration:none;font-size:16px}
+.wa-cta p{margin:5px 0 0;font-size:13px;color:#bbb;text-align:center}
+#vozBtn{background:#25D366;color:#000;border-radius:20px;font-size:13px;font-weight:bold;padding:12px 10px;white-space:nowrap}
+#vozBtn.off{background:#444;color:#fff}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>EL BRAYAN</h1>
+<p>Vendedor de arcades en Plaza Aragón, el del puesto, el que te atiende sin vueltas.</p>
+</div>
+
+<div class="productos">
+<div class="card"><h3>SENCILLO</h3><p>1 jugador<br>1 palanca</p><p><b>$2,699</b></p><button onclick="elegir('Sencillo')">Quiero el Sencillo</button></div>
+<div class="card"><h3>DOBLE</h3><p>2 jugadores<br>2 palancas<br>⭐ EL MÁS VENDIDO</p><p><b>$2,799</b></p><button onclick="elegir('Doble')">Quiero el Doble</button></div>
+</div>
+
+<div id="chat"></div>
+
+<div id="chips"></div>
+
+<div class="controls">
+<input id="entrada" placeholder="Escríbele a El Brayan...">
+<button id="vozBtn" onclick="alternarVoz()" aria-pressed="true" title="Prender o apagar la voz de El Brayan">Voz: prendida</button>
+<button id="micBtn" onclick="escuchar()">🎤</button>
+<button onclick="enviar()">➤</button>
+</div>
+
+<script>
+// ===== EL BRAYAN - VERSIÓN FINAL, NO MOVER =====
+let yaPreguntoParaQuien = false;
+let yaSaludo = false;
+const chatDiv = document.getElementById('chat');
+
+// Estado de la venta (para cerrar con el botón de WhatsApp, sin bucles)
+let modeloElegido = null;   // "Sencillo" | "Doble"
+let esperandoDia = false;   // Brayan preguntó "¿para hoy o para el finde?"
+let diaElegido = null;      // "hoy" | "finde"
+let cerrado = false;        // la venta ya se cerró
+let vozActiva = true;       // la voz viene PRENDIDA por defecto
+
+function agregar(tipo, texto){
+  const d = document.createElement('div');
+  d.className = 'msg ' + tipo;
+  d.textContent = texto;
+  chatDiv.appendChild(d);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+function limpiarParaVoz(texto){
+  let t = texto;
+  t = t.replace(/ufff+/gi, "uf");
+  t = t.replace(/u\s*f\s*f+/gi, "uf");
+  t = t.replace(/jajaja+/gi, "ja ja");
+  t = t.replace(/[😂🤣🔥💪*#:]/g, "");
+  t = t.replace(/\$50/g, "cincuenta pesos");
+  t = t.replace(/\$2,799/g, "dos mil setecientos noventa y nueve");
+  t = t.replace(/\$2,699/g, "dos mil seiscientos noventa y nueve");
+  t = t.replace(/,/g, ", ... ");
+  t = t.replace(/\. /g, ". ... ");
+  return t;
+}
+
+function hablarNatural(textoOriginal){
+  if(!vozActiva || !('speechSynthesis' in window)) return;
+  const texto = limpiarParaVoz(textoOriginal);
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(texto);
+  u.lang = 'es-MX';
+  u.pitch = 0.6; // GRAVE, DE VATO, NO DE VIEJA
+  u.rate = 0.95; // NATURAL, NO ACELERADO
+  u.volume = 1;
+  const voces = speechSynthesis.getVoices();
+  let voz = voces.find(v => v.lang === 'es-MX' && v.name.includes('Raul')) ||
+            voces.find(v => v.lang === 'es-MX') ||
+            voces.find(v => v.lang.startsWith('es'));
+  if(voz) u.voice = voz;
+  speechSynthesis.speak(u);
+}
+
+function alternarVoz(){
+  vozActiva = !vozActiva;
+  const btn = document.getElementById('vozBtn');
+  btn.textContent = vozActiva ? "Voz: prendida" : "Voz: apagada";
+  btn.classList.toggle('off', !vozActiva);
+  btn.setAttribute('aria-pressed', vozActiva ? "true" : "false");
+  if(!vozActiva && 'speechSynthesis' in window) speechSynthesis.cancel();
+  if(vozActiva) hablarNatural("Qué onda, carnal.");
+}
+
+// Botón verde de WhatsApp con el apartado ya escrito (modelo y día elegidos)
+function agregarBotonWhatsApp(){
+  const modelo = modeloElegido || "Doble";
+  const precio = modelo === "Sencillo" ? "$2,699" : "$2,799";
+  let texto = "Qué onda Ulis, soy cliente de El Brayan en Plaza Aragón. Me aparta el arcade " +
+    modelo + " (" + precio + ") con $50";
+  texto += diaElegido === "hoy" ? " para hoy." : (diaElegido === "finde" ? " para el finde." : ".");
+  const div = document.createElement('div');
+  div.className = 'wa-cta';
+  const a = document.createElement('a');
+  a.href = "https://wa.me/525544032155?text=" + encodeURIComponent(texto);
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.textContent = "Confirmar mi apartado con Ulis";
+  const p = document.createElement('p');
+  p.textContent = "WhatsApp de Ulis, el jefe: 55 4403 2155";
+  div.appendChild(a);
+  div.appendChild(p);
+  chatDiv.appendChild(div);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+// Botones rápidos Hoy / Para el finde tras la pregunta de cierre
+function mostrarChips(){
+  const chips = document.getElementById('chips');
+  chips.innerHTML = "";
+  if(cerrado || !esperandoDia) return;
+  ["Hoy", "Para el finde"].forEach(function(txt){
+    const b = document.createElement('button');
+    b.type = "button";
+    b.className = "chip";
+    b.textContent = txt;
+    b.onclick = function(){ responder(txt); };
+    chips.appendChild(b);
+  });
+}
+
+function cerrarVenta(){
+  cerrado = true;
+  esperandoDia = false;
+  return "Va, carnal, ya te lo aparto. Te paso con mi jefe Ulis al WhatsApp 5544032155 para que te confirme. Buena compra, tu hijo va a estar feliz.";
+}
+
+function respuestaElBrayan(mensaje){
+  const msg = mensaje.toLowerCase();
+
+  // Ya cerró: no vender de nuevo, solo remitir con el jefe.
+  if(cerrado){
+    return "Ya quedó apartado el tuyo, carnal. Mi jefe Ulis te confirma por WhatsApp al 5544032155.";
+  }
+
+  // Estaba esperando el día del apartado y el cliente lo dice: cierra la venta.
+  if(esperandoDia && (/\bhoy\b/.test(msg) || msg.includes("finde") || msg.includes("fin de semana") || msg.includes("sabado") || msg.includes("sábado") || msg.includes("domingo"))){
+    diaElegido = /\bhoy\b/.test(msg) ? "hoy" : "finde";
+    return cerrarVenta();
+  }
+
+  // NUNCA FEMINIZAR, NUNCA PREGUNTAR CHICA O CHAVO
+  if(msg.includes("hijo") || msg.includes("niño") || msg.includes("hija")){
+    yaPreguntoParaQuien = true;
+    return "Ah, para tu hijo, chido. Tú sí sabes, carnal. Tu hijo va a decir que eres el mejor. ¿Te late el Doble? Es el que más se llevan.";
+  }
+  if(msg.includes("para mi") || msg.includes("para mí")){
+    yaPreguntoParaQuien = true;
+    return "Ah, para ti, con todo, carnal. Tú sí sabes elegir. ¿Te late el Doble? Es el que más se llevan.";
+  }
+  if(msg.includes("doble")){
+    modeloElegido = "Doble";
+    esperandoDia = true;
+    return "Ese Doble es el bueno, carnal. Solo me quedan 2 de esta semana. ¿Te lo aparto con cincuenta pesos para hoy o para el finde?";
+  }
+  if(msg.includes("sencillo")){
+    modeloElegido = "Sencillo";
+    return "El Sencillo está chido también, carnal. Pero el Doble por cien pesos más está mucho mejor. ¿Te vas por el Doble, va?";
+  }
+  if(msg.includes("precio") || msg.includes("cuanto") || msg.includes("cuánto")){
+    esperandoDia = true;
+    return "Sencillo dos mil seiscientos noventa y nueve y el Doble dos mil setecientos noventa y nueve, carnal. El Doble es el que más se llevan. ¿Te lo aparto con cincuenta pesos?";
+  }
+  if(msg.includes("ulises")){
+    return "Qué onda, Ulises. Qué bueno que pasaste, carnal. ¿El arcade es para ti o para tu hijo?";
+  }
+  // "sí"/"si" y "va" solo como PALABRA COMPLETA: "sin" no debe cerrar la venta.
+  if(/\b(si|sí|va|dale|sale|ok)\b/.test(msg) || msg.includes("aparta")){
+    return cerrarVenta();
+  }
+  if(msg.includes("hola") || msg.includes("que onda") || msg.includes("qué onda")){
+    return "¡Qué onda, carnal! Soy El Brayan, yo soy el que vende aquí en Plaza Aragón. ¿El arcade es para ti o para tu hijo?";
+  }
+  if(!yaPreguntoParaQuien){
+    return "¡Qué onda, carnal! Soy El Brayan. ¿El arcade es para ti o para tu hijo?";
+  }
+  esperandoDia = true;
+  return "Va, carnal, ¿te late el Doble? Es el que más se llevan y solo me quedan 2. ¿Te lo aparto con cincuenta pesos?";
+}
+
+function responder(texto){
+  agregar('user', texto);
+  const cerroAntes = cerrado;
+  const resp = respuestaElBrayan(texto);
+  const cerroAhora = cerrado && !cerroAntes;
+  setTimeout(()=>{
+    agregar('brayan', resp);
+    hablarNatural(resp);
+    if(cerroAhora) agregarBotonWhatsApp();
+    mostrarChips();
+  }, 400);
+}
+
+function enviar(){
+  const input = document.getElementById('entrada');
+  const texto = input.value.trim();
+  if(!texto) return;
+  input.value = "";
+  responder(texto);
+}
+
+function elegir(tipo){
+  agregar('user', "Quiero el " + tipo);
+  const cerroAntes = cerrado;
+  const resp = respuestaElBrayan(tipo);
+  const cerroAhora = cerrado && !cerroAntes;
+  agregar('brayan', resp);
+  hablarNatural(resp);
+  if(cerroAhora) agregarBotonWhatsApp();
+  mostrarChips();
+}
+
+function escuchar(){
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!Rec){
+    agregar('brayan', "Tu navegador no deja usar el micrófono, carnal. Escríbeme aquí abajito.");
+    return;
+  }
+  const rec = new Rec();
+  rec.lang = 'es-MX';
+  rec.onresult = (e)=>{
+    const texto = e.results[0][0].transcript;
+    document.getElementById('entrada').value = texto;
+    enviar();
+  };
+  rec.start();
+  agregar('brayan', "Te escucho, carnal, habla...");
+}
+
+document.getElementById('entrada').addEventListener('keypress', (e)=>{ if(e.key==='Enter') enviar(); });
+
+// SALUDO INICIAL - SOLO UNA VEZ
+window.onload = ()=>{
+  if(!yaSaludo){
+    yaSaludo = true;
+    const saludo = "¡Qué onda, carnal! Soy El Brayan, yo soy el que vende aquí en Plaza Aragón. ¿El arcade es para ti o para tu hijo?";
+    agregar('brayan', saludo);
+  }
+};
+</script>
+</body>
+</html>
